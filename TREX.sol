@@ -1514,12 +1514,6 @@ interface IWETH {
 
 pragma solidity =0.8.19;
 
-interface IBProtect {
-    function start(bool isPair) external;
-
-    function checkBot(uint256 _totalFee) external view returns (uint256);
-}
-
 contract TREX is ERC20, Ownable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -1550,8 +1544,6 @@ contract TREX is ERC20, Ownable {
     IUniswapV2Factory private immutable factory;
 
     IUniswapV2Router02 private immutable swapRouter;
-
-    IBProtect private antiBot;
 
     IWETH private immutable WETH;
 
@@ -1591,12 +1583,10 @@ contract TREX is ERC20, Ownable {
     }
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        antiBot.start(isPair(to));
         return _internalTransfer(_msgSender(), to, amount);
     }
 
     function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
-        antiBot.start(isPair(recipient));
         address spender = _msgSender();
         _spendAllowance(sender, spender, amount);
         return _internalTransfer(sender, recipient, amount);
@@ -1667,8 +1657,7 @@ contract TREX is ERC20, Ownable {
     }
     
     function takeFee(address sender, uint256 amount) internal returns (uint256) {
-        uint256 _totalFee = antiBot.checkBot(totalFee);
-        uint256 feeAmount = (amount * _totalFee) / feeDenominator;
+        uint256 feeAmount = (amount * totalFee) / feeDenominator;
         _transfer(sender, address(this), feeAmount);
         return amount - feeAmount;
     }
@@ -1705,10 +1694,6 @@ contract TREX is ERC20, Ownable {
         govWallet = _govWallet;
     }
 
-    function setBProtect(address _bot) external onlyOwner {
-        antiBot = IBProtect(_bot);
-    }
-    
     function setWalletOnFee(address[] memory _a, bool[] calldata _b) external onlyOwner {
         require(_a.length > 0, "List wallets is empty");
         require(_b.length > 0, "List exempts is empty");
